@@ -1,5 +1,6 @@
 package com.example.inventory_service.controller;
 
+import com.example.inventory_service.model.request.UpdateRequest;
 import com.example.inventory_service.model.response.InventoryResponse;
 import com.example.inventory_service.service.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -16,5 +17,10 @@ public class InventoryController {
     @GetMapping
     public List<InventoryResponse> isInStock(@RequestParam List<String> skuCodes){
         return service.isInStock(skuCodes);
+    }
+
+    @PutMapping
+    public Boolean isInventoryUpdated(@RequestBody UpdateRequest request){
+        return service.isInventoryUpdated(request);
     }
 }

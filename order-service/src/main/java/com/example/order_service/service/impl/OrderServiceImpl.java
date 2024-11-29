@@ -2,6 +2,7 @@ package com.example.order_service.service.impl;
 
 import com.example.order_service.inventory.InventoryClient;
 import com.example.order_service.inventory.InventoryResponse;
+import com.example.order_service.inventory.UpdateRequest;
 import com.example.order_service.model.entity.Order;
 import com.example.order_service.model.entity.OrderLineItem;
 import com.example.order_service.model.request.OrderLineItemRequest;
@@ -26,7 +27,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public ResponseEntity<String> createOrder(OrderRequest request) {
-        boolean isInStock = checkProductAvailability(request.orderLineItemRequestList());
+        List<InventoryResponse> inventoryResponses = checkProductAvailability(request.orderLineItemRequestList());
+        boolean isInStock = inventoryResponses.stream().allMatch(InventoryResponse::isInStock);
         if (!isInStock) throw new RuntimeException("Some items in cart are not in stock");
         List<OrderLineItem> orderLineItemList = request.orderLineItemRequestList().stream()
                 .map(this::mapToOrderLineItem)
@@ -35,24 +37,25 @@ public class OrderServiceImpl implements OrderService {
                 .orderNo(getOrderNo())
                 .orderLineItems(orderLineItemList)
                 .build();
-//        boolean isInventoryUpdated = updateInventory(order);
-        repository.save(order);
+        boolean isInventoryUpdated = updateInventory(order,inventoryResponses);
+        if (isInventoryUpdated)
+            repository.save(order);
 
         return new ResponseEntity<>("order created successfully", HttpStatus.CREATED);
     }
 
-//    private boolean updateInventory(Order order) {
-//        order.getOrderLineItems().stream()
-//                .map(x->{
-//
-//                });
-//    }
+    private boolean updateInventory(Order order, List<InventoryResponse> inventoryResponses) {
+         return order.getOrderLineItems().stream()
+                 .map(x->{
+                     int quantity = inventoryResponses.stream().filter(y->y.skuCode().equals(x.getSkuCode())).findFirst().get().quantity()-x.getQuantity();
+                     return inventoryClient.isInventoryUpdated(new UpdateRequest(x.getSkuCode(),quantity));
+                 }).allMatch(x->x==Boolean.TRUE);
+    }
 
-    private boolean checkProductAvailability(List<OrderLineItemRequest> orderLineItemRequests) {
+    private List<InventoryResponse> checkProductAvailability(List<OrderLineItemRequest> orderLineItemRequests) {
         List<String> skuCodes = orderLineItemRequests.stream()
                 .map(OrderLineItemRequest::skuCode).toList();
-        List<InventoryResponse> inventoryResponses = inventoryClient.isInStock(skuCodes);
-        return inventoryResponses.stream().allMatch(InventoryResponse::isInStock);
+        return inventoryClient.isInStock(skuCodes);
     }
 
     private String getOrderNo() {

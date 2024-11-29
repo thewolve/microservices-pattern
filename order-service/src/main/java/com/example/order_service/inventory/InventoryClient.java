@@ -1,16 +1,17 @@
 package com.example.order_service.inventory;
 
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @FeignClient(
-        name = "inventory-service",
-        url="${application.config.inventory-url}"
+        name = "inventory-service"
 )
 public interface InventoryClient {
-    @GetMapping
+    @GetMapping("/api/inventory")
     List<InventoryResponse> isInStock(@RequestParam List<String> skuCodes);
+
+    @PutMapping("/api/inventory")
+    Boolean isInventoryUpdated(@RequestBody UpdateRequest request);
 }

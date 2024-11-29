@@ -1,8 +1,7 @@
 package com.example.order_service.inventory;
 
-public record InventoryResponse(
+public record UpdateRequest(
         String skuCode,
-        boolean isInStock,
         Integer quantity
 ) {
 }

@@ -1,5 +1,6 @@
 package com.example.order_service.service.impl;
 
+import com.example.order_service.event.OrderCreatedEvent;
 import com.example.order_service.inventory.InventoryClient;
 import com.example.order_service.inventory.InventoryResponse;
 import com.example.order_service.inventory.UpdateRequest;
@@ -12,6 +13,7 @@ import com.example.order_service.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository repository;
     private final InventoryClient inventoryClient;
+    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
 
     @Override
     public ResponseEntity<String> createOrder(OrderRequest request) {
@@ -38,8 +41,10 @@ public class OrderServiceImpl implements OrderService {
                 .orderLineItems(orderLineItemList)
                 .build();
         boolean isInventoryUpdated = updateInventory(order,inventoryResponses);
-        if (isInventoryUpdated)
+        if (isInventoryUpdated){
             repository.save(order);
+            kafkaTemplate.send("notificationTopic",new OrderCreatedEvent(order.getOrderNo()));
+        }
 
         return new ResponseEntity<>("order created successfully", HttpStatus.CREATED);
     }
